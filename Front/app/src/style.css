@@ -1,0 +1,84 @@
+@font-face {
+  font-family: "Custom";
+  src: url("./styles/fonts/NetflixSans-Medium.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Custom;
+  color: white;
+  user-select: none;
+}
+
+body {
+  background: #ff0000;
+  background: linear-gradient(90deg, rgb(255, 0, 0) 14%, rgb(0, 0, 0) 75%);
+}
+body main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 3rem auto;
+  width: 270px;
+  height: 350px;
+}
+body main .players {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  flex-direction: column;
+  font-size: 1.2rem;
+}
+@media (max-width: 600px) {
+  body main .players {
+    flex-direction: row;
+    gap: 1rem;
+  }
+}
+body main .current-player {
+  font-size: 1.9rem;
+}
+body main .content {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+body main .content .section {
+  background: rgba(255, 255, 255, 0.46);
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body main .content .section:hover {
+  cursor: pointer;
+}
+body main .content .section img {
+  width: 50px;
+  height: 50px;
+}
+body main .button-reset {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  width: 100px;
+  background: rgba(103, 103, 103, 0.38);
+  padding: 5px 12px;
+  border-radius: 3px;
+}
+body main .button-reset:hover {
+  cursor: pointer;
+  background: rgba(103, 103, 103, 0.44);
+}
+body main .button-reset:active {
+  cursor: pointer;
+  background: rgba(103, 103, 103, 0.32);
+}
+
+/*# sourceMappingURL=style.css.map */
