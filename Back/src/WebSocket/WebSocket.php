@@ -62,7 +62,6 @@ class WebSocket implements MessageComponentInterface {
         }
 
         if (count($this->clients) > 2) {
-            echo "Pidar";
             return;
         }
 
