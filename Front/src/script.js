@@ -44,15 +44,30 @@ ws.onmessage = (e) => {
             if (player.username === localStorage.getItem("username")) {
                 canStep = player.canStep
             }
+
+            const alreadyUsername = players.some(local_player => local_player.username === player.username)
+            if (alreadyUsername) {
+                return;
+            }
+
             players.push({
                 username: player.username,
                 char: player.char
             })
         })
+
+        console.log(players);
+
+        displayPlayers()
     }
 
     if (data.canStep) {
         canStep = data.canStep;
+    }
+
+    if (data.canStart) {
+        document.querySelector('.container-preloader')
+            .style.display = 'none'
     }
 
     if (data.section) {
@@ -80,8 +95,6 @@ ws.onmessage = (e) => {
     if (data.reset === true) {
         window.location.reload();
     }
-
-    displayPlayers()
 }
 
 function onMessageClick(section) {
@@ -114,14 +127,14 @@ function displayPlayers() {
 }
 
 
-function userCombination() {
-    return clicked_sections
+function checkWin() {
+    return  clicked_sections
         .filter(section => section.username === localStorage.getItem("username"))
         .map(section => +section.index);
 }
 
 function checkWinner() {
-    const userComb = userCombination();
+    const userComb = checkWin();
     return win_combination.some(combo => combo.every(index => userComb.includes(index)));
 }
 
@@ -138,6 +151,11 @@ function addEvent() {
             }
 
             if (can_click && canStep) {
+                let data_section = {
+                    username: localStorage.getItem("username"),
+                    index
+                }
+
                 let img;
                 img = (currentPlayer === "x") ? o : x;
                 section.innerHTML = `<img src="${img}" alt="Img">`;
@@ -149,16 +167,14 @@ function addEvent() {
                 } else {
                     currentPlayer = "x"
                 }
+
+                onMessageClick(data_section)
+
+                clicked_sections.push(data_section);
+                console.log(clicked_sections);
             }
 
-            let data_section = {
-                username: localStorage.getItem("username"),
-                index
-            }
 
-            onMessageClick(data_section)
-            clicked_sections.push(data_section);
-            console.log(clicked_sections);
             canStep = false;
             if (checkWinner()) {
                 console.log(localStorage.getItem("username"))

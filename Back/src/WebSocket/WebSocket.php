@@ -26,6 +26,16 @@ class WebSocket implements MessageComponentInterface {
     {
         if (count($this->clients) >= 2) return;
         $this->clients->attach($conn);
+
+        if (count($this->players) === 2) {
+            foreach ($this->clients as $client) {
+                $client->send(json_encode([
+                    'players' => $this->players,
+                    'canStart' => true
+                ]));
+            }
+        }
+
         echo "Connect: " . count($this->clients) . "\n";
     }
 
@@ -111,6 +121,11 @@ class WebSocket implements MessageComponentInterface {
         }
 
         if (isset($data['username'])) {
+            foreach ($this->players as $player) {
+                if ($player['username'] === $data['username']) {
+                    return;
+                }
+            }
             if ($this->first === 0) {
                 if (empty($this->players)) {
                     $this->players[0] = [
@@ -146,6 +161,7 @@ class WebSocket implements MessageComponentInterface {
             foreach ($this->clients as $client) {
                 $client->send(json_encode([
                     'players' => $this->players,
+                    'canStart' => true
                 ]));
             }
         }
