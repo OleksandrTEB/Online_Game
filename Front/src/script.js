@@ -19,6 +19,17 @@ ws.onopen = () => {
 let players = [];
 let clicked_sections = [];
 let can_click = true;
+let canStep = false;
+let win_combination = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+]
 
 const x = './assets/x.png'
 const o = './assets/o.png'
@@ -27,10 +38,12 @@ let img;
 
 ws.onmessage = (e) => {
     const data = JSON.parse(e.data);
-    console.log(data);
 
     if (data.players) {
         data.players.forEach((player) => {
+            if (player.username === localStorage.getItem("username")) {
+                canStep = player.canStep
+            }
             players.push({
                 username: player.username,
                 char: player.char
@@ -38,10 +51,12 @@ ws.onmessage = (e) => {
         })
     }
 
+    if (data.canStep) {
+        canStep = data.canStep;
+    }
 
     if (data.section) {
-        console.log(data.section);
-        const section = document.querySelector(`[data-index="${data.section}"]`);
+        const section = document.querySelector(`[data-index="${data.section.index}"]`);
         if (data.currentChar === "x") {
             document.querySelector('.current-player').textContent = `Current player is o`;
             currentPlayer = "x"
@@ -52,7 +67,14 @@ ws.onmessage = (e) => {
             img = o;
         }
         section.innerHTML = `<img src="${img}" alt="Img">`;
-        clicked_sections.push(section);
+        clicked_sections = data.clicked_sections;
+        console.log(data.clicked_sections);
+    }
+
+    if (data.win) {
+        const div = document.querySelector(".win");
+        div.style.display = "block";
+        div.textContent = `${data.win} Victory`;
     }
 
     if (data.reset === true) {
@@ -91,17 +113,31 @@ function displayPlayers() {
     container.innerHTML = html;
 }
 
+
+function userCombination() {
+    return clicked_sections
+        .filter(section => section.username === localStorage.getItem("username"))
+        .map(section => +section.index);
+}
+
+function checkWinner() {
+    const userComb = userCombination();
+    return win_combination.some(combo => combo.every(index => userComb.includes(index)));
+}
+
 function addEvent() {
     const sections = document.querySelector('.content');
     sections.addEventListener('click', (e) => {
         if (e.target.classList.contains('section')) {
             const index = e.target.dataset.index;
             const section = document.querySelector(`[data-index="${index}"]`);
-            console.log('clicked', section);
 
             can_click = !clicked_sections.includes(index);
+            if (clicked_sections.length > 15) {
+                console.log("Error")
+            }
 
-            if (can_click) {
+            if (can_click && canStep) {
                 let img;
                 img = (currentPlayer === "x") ? o : x;
                 section.innerHTML = `<img src="${img}" alt="Img">`;
@@ -113,11 +149,23 @@ function addEvent() {
                 } else {
                     currentPlayer = "x"
                 }
-
-                onMessageClick(index)
             }
 
-            clicked_sections.push(index);
+            let data_section = {
+                username: localStorage.getItem("username"),
+                index
+            }
+
+            onMessageClick(data_section)
+            clicked_sections.push(data_section);
+            console.log(clicked_sections);
+            canStep = false;
+            if (checkWinner()) {
+                console.log(localStorage.getItem("username"))
+                ws.send(JSON.stringify({
+                    win: localStorage.getItem("username"),
+                }));
+            }
         }
     })
 }

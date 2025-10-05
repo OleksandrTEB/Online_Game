@@ -9,11 +9,17 @@ class WebSocket implements MessageComponentInterface {
     protected \SplObjectStorage $clients;
     private array $players;
     private int $reset;
+    private array $clicked_sections;
+    private bool $send;
+    private int $first;
 
     public function __construct() {
         $this->clients = new \SplObjectStorage;
         $this->players = [];
         $this->reset = 0;
+        $this->clicked_sections = [];
+        $this->send = true;
+        $this->first = 0;
     }
 
     public function onOpen(ConnectionInterface $conn): void
@@ -29,33 +35,72 @@ class WebSocket implements MessageComponentInterface {
 
         $data = json_decode($msg, true);
 
+        if (isset($data['win'])) {
+            foreach ($this->clients as $client) {
+                $client->send(json_encode([
+                    "win" => $data['win'],
+                ]));
+            }
+
+            return;
+        }
+
+        if ($this->send) {
+            foreach ($this->clients as $client) {
+                $client->send(json_encode([
+                    'canStep' => true
+                ]));
+                break;
+            }
+            $this->send = false;
+        }
+
         if (isset($data['wont-reset'])) {
             $this->reset++;
 
             if ($this->reset >= 2) {
                 $this->players = [];
                 $this->reset = 0;
+                $this->clicked_sections = [];
+                $this->send = true;
+
+                if ($this->first === 0) {
+                    $this->first = 1;
+                } else {
+                    $this->first = 0;
+                }
 
                 foreach ($this->clients as $client) {
                     $client->send(json_encode([
                         'reset' => true,
                     ]));
                 }
-
                 return;
             }
-
             return;
         }
 
         if (isset($data['section'])) {
+            if (!in_array($data['section'], $this->clicked_sections)) {
+                $this->clicked_sections[] = $data['section'];
+            }
             foreach ($this->clients as $client) {
                 if ($client !== $from) {
                     $client->send(json_encode([
                         'section' => $data['section'],
+                        'clicked_sections' => $this->clicked_sections,
                         'currentChar' => $data['currentChar'],
                     ]));
                 }
+            }
+            $this->players[0]['canStep'] = !$this->players[0]['canStep'];
+            $this->players[1]['canStep'] = !$this->players[1]['canStep'];
+            $i = 0;
+            foreach ($this->clients as $client) {
+                $client->send(json_encode([
+                    'canStep' => $this->players[$i]['canStep'],
+                ]));
+                $i++;
             }
 
             return;
@@ -66,18 +111,35 @@ class WebSocket implements MessageComponentInterface {
         }
 
         if (isset($data['username'])) {
-            if (empty($this->players)) {
-                $this->players[0] = [
-                    'username' => $data['username'],
-                    'char' => 'x'
-                ];
+            if ($this->first === 0) {
+                if (empty($this->players)) {
+                    $this->players[0] = [
+                        'username' => $data['username'],
+                        'char' => 'x',
+                        'canStep' => true
+                    ];
+                } else {
+                    $this->players[1] = [
+                        'username' => $data['username'],
+                        'char' => 'o',
+                        'canStep' => false
+                    ];
+                }
             } else {
-                $this->players[1] = [
-                    'username' => $data['username'],
-                    'char' => 'o'
-                ];
+                if (empty($this->players)) {
+                    $this->players[0] = [
+                        'username' => $data['username'],
+                        'char' => 'o',
+                        'canStep' => false
+                    ];
+                } else {
+                    $this->players[1] = [
+                        'username' => $data['username'],
+                        'char' => 'x',
+                        'canStep' => true
+                    ];
+                }
             }
-            echo "Players: " . count($this->players) . "\n";
         }
 
         if (count($this->players) === 2) {

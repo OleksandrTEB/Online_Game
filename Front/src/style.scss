@@ -82,5 +82,18 @@ body {
         background: rgba(103, 103, 103, 0.32);
       }
     }
+
+    .win {
+      display: none;
+      border-radius: 10px;
+      padding: 2rem 5rem;
+      background: #4400ff;
+      background: linear-gradient(44deg, rgba(68, 0, 255, 0.69) 14%, rgba(53, 120, 36, 0.67) 75%);
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+    }
   }
 }

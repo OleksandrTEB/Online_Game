@@ -1,6 +1,6 @@
 @font-face {
   font-family: "Custom";
-  src: url("styles/fonts/NetflixSans-Medium.woff2") format("woff2");
+  src: url("./styles/fonts/NetflixSans-Medium.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
 }
@@ -79,6 +79,18 @@ body main .button-reset:hover {
 body main .button-reset:active {
   cursor: pointer;
   background: rgba(103, 103, 103, 0.32);
+}
+body main .win {
+  display: none;
+  border-radius: 10px;
+  padding: 2rem 5rem;
+  background: #4400ff;
+  background: linear-gradient(44deg, rgba(68, 0, 255, 0.69) 14%, rgba(53, 120, 36, 0.67) 75%);
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
 }
 
 /*# sourceMappingURL=style.css.map */
