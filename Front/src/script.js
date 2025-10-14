@@ -151,6 +151,10 @@ function starGame() {
                 currentPlayer = (currentPlayer === "x") ? "o" : "x";
                 CreateGame(9)
             }
+
+            if (data.your_opponent_close_connect) {
+                window.location.reload();
+            }
         }
 
         ws.onclose = () => {

@@ -5,32 +5,57 @@ namespace App\WebSocket;
 use Ratchet\MessageComponentInterface;
 use Ratchet\ConnectionInterface;
 
-class WebSocket implements MessageComponentInterface {
+class WebSocket implements MessageComponentInterface
+{
     protected \SplObjectStorage $clients;
     private array $rooms;
     private int $open_room;
-    private int $reset;
-    private int $first;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->clients = new \SplObjectStorage;
         $this->rooms = [];
         $this->open_room = 0;
-        $this->reset = 0;
-        $this->first = 0;
+    }
+
+    private function checkIssetArray(int $room): void
+    {
+        if (!isset($this->rooms[$room]['players'])) {
+            $this->rooms[$room]['players'] = [];
+        }
+
+        if (!isset($this->rooms[$room]['clicked_sections'])) {
+            $this->rooms[$room]['clicked_sections'] = [];
+        }
+
+        if (!isset($this->rooms[$room]['reset'])) {
+            $this->rooms[$room]['reset'] = 0;
+        }
+
+        if (!isset($this->rooms[$room]['first'])) {
+            $this->rooms[$room]['first'] = 0;
+        }
+    }
+
+    public function searchInRooms(int $id): int
+    {
+        $room = 0;
+
+        for ($i = 0; $i < count($this->rooms); $i++) {
+            if (array_key_exists($id, $this->rooms[$i]['players'])) {
+                $room = $i;
+                break;
+            }
+        }
+
+        return $room;
     }
 
     public function onOpen(ConnectionInterface $conn): void
     {
-        if (!isset($this->rooms[$this->open_room])) {
-            $this->rooms[$this->open_room] = [
-                'players' => [],
-                'clicked_sections' => []
-            ];
-        }
+        $this->checkIssetArray($this->open_room);
 
-        if (count($this->rooms[$this->open_room]['players']) === 2)
-        {
+        if (count($this->rooms[$this->open_room]['players']) === 2) {
             $this->open_room++;
         }
 
@@ -47,7 +72,7 @@ class WebSocket implements MessageComponentInterface {
 
         $id = $from->resourceId;
 
-        $room = 0;
+        $room = $this->searchInRooms($id);
 
         for ($i = 0; $i < count($this->rooms); $i++) {
             if (array_key_exists($id, $this->rooms[$i]['players'])) {
@@ -55,6 +80,8 @@ class WebSocket implements MessageComponentInterface {
                 break;
             }
         }
+
+        $this->checkIssetArray($room);
 
         switch ($data['type']) {
             case 'userinfo':
@@ -84,47 +111,20 @@ class WebSocket implements MessageComponentInterface {
                         }
                     }
                 }
-
-//                ----------Helper Structure----------
-//                $this->rooms = [
-//                    '0' => [
-//                        '43' => [
-//                            'username' => 'Adam',
-//                            'char' => 'o',
-//                            'canStep' => false,
-//                        ],
-//                        '44' => [
-//                            'username' => '2342342',
-//                            'char' => 'x',
-//                            'canStep' => true,
-//                        ]
-//                    ],
-//                    '1' => [
-//                        '23' => [
-//                            'username' => 'Anna',
-//                            'char' => 'o',
-//                            'canStep' => false,
-//                        ],
-//                        '35' => [
-//                            'username' => '2342342',
-//                            'char' => 'x',
-//                            'canStep' => true,
-//                        ]
-//                    ]
-//                ];
                 break;
 
             case 'wont-reset':
-                $this->reset++;
+                $this->rooms[$room]['reset']++;
+                $reset = $this->rooms[$room]['reset'];
 
-                if ($this->reset >= 2) {
-                    $this->reset = 0;
+                if ($reset >= 2) {
+                    $this->rooms[$room]['reset'] = 0;
                     $this->rooms[$room]['clicked_sections'] = [];
 
-                    if ($this->first === 0) {
-                        $this->first = 1;
+                    if ($this->rooms[$room]['first'] === 0) {
+                        $this->rooms[$room]['first'] = 1;
                     } else {
-                        $this->first = 0;
+                        $this->rooms[$room]['first'] = 0;
                     }
 
                     for ($i = 0; $i < 2; $i++) {
@@ -154,10 +154,6 @@ class WebSocket implements MessageComponentInterface {
                 break;
 
             case 'clicked':
-                if (!isset($this->rooms[$room]['clicked_sections'])) {
-                    $this->rooms[$room]['clicked_sections'] = [];
-                }
-
                 if (!in_array($data['section'], $this->rooms[$room]['clicked_sections'])) {
                     $this->rooms[$room]['clicked_sections'][] = $data['section'];
                 }
@@ -204,6 +200,20 @@ class WebSocket implements MessageComponentInterface {
 
     public function onClose(ConnectionInterface $conn): void
     {
+        $room = $this->searchInRooms($conn->resourceId);
+
+        foreach ($this->clients as $client) {
+            if (array_key_exists($client->resourceId, $this->rooms[$room]['players'])) {
+                $client->close();
+            }
+        }
+
+        unset($this->rooms[$room]['players'][$conn->resourceId]);
+
+        if (count($this->rooms[$room]['players']) === 0) {
+            unset($this->rooms[$room]);
+        }
+
         $this->clients->detach($conn);
         echo "Disconnect:" . count($this->clients) . "\n";
     }
@@ -213,3 +223,67 @@ class WebSocket implements MessageComponentInterface {
         $this->clients->detach($conn);
     }
 }
+
+//                ----------Helper Structure----------
+//                $this->rooms = [
+//                    0 => [
+//                        'players' => [
+//                            43 => [
+//                                'username' => 'Adam',
+//                                'char' => 'o',
+//                                'canStep' => false,
+//                            ],
+//                            44 => [
+//                                'username' => '2342342',
+//                                'char' => 'x',
+//                                'canStep' => true,
+//                            ]
+//                        ],
+//                        'clicked_sections' => [
+//                            0 => [
+//                                'username' => 'Adam',
+//                                'index' => 4
+//                            ],
+//                            1 => [
+//                                'username' => 'Anna',
+//                                'index' => 6
+//                            ],
+//                            2 => [
+//                                'username' => 'John',
+//                                'index' => 1
+//                            ]
+//                        ],
+//                        'reset' => 0,
+//                        'first' => 0,
+//                    ],
+//                    1 => [
+//                        'players' => [
+//                            43 => [
+//                                'username' => 'Adam',
+//                                'char' => 'o',
+//                                'canStep' => false,
+//                            ],
+//                            44 => [
+//                                'username' => '2342342',
+//                                'char' => 'x',
+//                                'canStep' => true,
+//                            ]
+//                        ],
+//                        'clicked_sections' => [
+//                            0 => [
+//                                'username' => 'Adam',
+//                                'index' => 4
+//                            ],
+//                            1 => [
+//                                'username' => 'Anna',
+//                                'index' => 6
+//                            ],
+//                            2 => [
+//                                'username' => 'John',
+//                                'index' => 1
+//                            ]
+//                        ],
+//                        'reset' => 0,
+//                        'first' => 0,
+//                    ]
+//                ];
