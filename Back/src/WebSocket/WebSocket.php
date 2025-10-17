@@ -158,14 +158,12 @@ class WebSocket implements MessageComponentInterface
                     $this->rooms[$room]['clicked_sections'][] = $data['section'];
                 }
                 foreach ($this->clients as $client) {
-                    if ($client !== $from) {
-                        if (array_key_exists($client->resourceId, $this->rooms[$room]['players'])) {
-                            $client->send(json_encode([
-                                'section' => $data['section'],
-                                'clicked_sections' => $this->rooms[$room]['clicked_sections'],
-                                'currentChar' => $data['currentChar'],
-                            ]));
-                        }
+                    if (array_key_exists($client->resourceId, $this->rooms[$room]['players'])) {
+                        $client->send(json_encode([
+                            'section' => $data['section'],
+                            'clicked_sections' => $this->rooms[$room]['clicked_sections'],
+                            'currentChar' => $data['currentChar'],
+                        ]));
                     }
                 }
 
@@ -179,6 +177,7 @@ class WebSocket implements MessageComponentInterface
                         $user =& $user_data[$keys[$i]];
                         $user['canStep'] = !$user['canStep'];
                         $client->send(json_encode([
+                            'type' => 'canStep',
                             'canStep' => $user['canStep'],
                         ]));
                         $i++;
@@ -212,6 +211,10 @@ class WebSocket implements MessageComponentInterface
 
         if (count($this->rooms[$room]['players']) === 0) {
             unset($this->rooms[$room]);
+
+            if (isset($this->rooms[$this->open_room])) {
+                if (!$this->rooms[$this->open_room] == 0) $this->open_room--;
+            }
         }
 
         $this->clients->detach($conn);

@@ -39,7 +39,7 @@ function starGame() {
     const x = './assets/x.png'
     const o = './assets/o.png'
     let currentPlayer = "x";
-    let tryReconnected;
+    let tryReconnected = true;
     let img;
     let canReset = true;
     let players = [];
@@ -59,10 +59,10 @@ function starGame() {
 
     function connectingWebSocket() {
 
-        ws = new WebSocket("ws://192.168.0.135:8080");
+        ws = new WebSocket("http://78.88.142.214:8080");
 
         ws.onopen = () => {
-            clearInterval(tryReconnected);
+            tryReconnected = false;
 
             let userInfo = {
                 type: 'userinfo',
@@ -102,7 +102,7 @@ function starGame() {
                 displayPlayers()
             }
 
-            if (data.canStep) {
+            if (data.type === "canStep") {
                 canStep = data.canStep;
             }
 
@@ -127,7 +127,21 @@ function starGame() {
                 }
                 section.innerHTML = `<img src="${img}" alt="Img">`;
                 clicked_sections = data.clicked_sections;
-                console.log(data.clicked_sections);
+
+                if (checkWin()) {
+                    ws.send(JSON.stringify({
+                        type: 'win',
+                        win: localStorage.getItem("username")
+                    }));
+                }
+
+                if (clicked_sections.length === 8) {
+                    setTimeout(() => {
+                        ws.send(JSON.stringify({
+                            type: 'wont-reset'
+                        }))
+                    }, 3000)
+                }
             }
 
             if (data.win) {
@@ -151,13 +165,10 @@ function starGame() {
                 currentPlayer = (currentPlayer === "x") ? "o" : "x";
                 CreateGame(9)
             }
-
-            if (data.your_opponent_close_connect) {
-                window.location.reload();
-            }
         }
 
         ws.onclose = () => {
+            tryReconnected = true
             document.querySelector('.container-preloader')
                 .style.display = 'block'
 
@@ -165,10 +176,12 @@ function starGame() {
             status.classList.remove('online');
             status.innerText = 'Offline';
 
-            tryReconnected = setInterval(() => {
-                console.log("Try reconnecting")
-                connectingWebSocket();
-            }, 5000)
+            if (tryReconnected) {
+                setTimeout(() => {
+                    console.log("Try reconnecting")
+                    connectingWebSocket();
+                }, 5000)
+            }
         }
 
         ws.onerror = (err) => {
@@ -211,13 +224,10 @@ function starGame() {
 
 
     function checkWin() {
-        return clicked_sections
+        const userComb = clicked_sections
             .filter(section => section.username === currentUserName)
             .map(section => +section.index);
-    }
 
-    function checkWinner() {
-        const userComb = checkWin();
         return win_combination.some(combo => combo.every(index => userComb.includes(index)));
     }
 
@@ -228,10 +238,7 @@ function starGame() {
                 const index = e.target.dataset.index;
                 const section = document.querySelector(`[data-index="${index}"]`);
 
-                can_click = !clicked_sections.includes(index);
-                if (clicked_sections.length > 15) {
-                    console.log("Error")
-                }
+                can_click = !clicked_sections.some(section => section.index === index);
 
                 if (can_click && canStep) {
                     let data_section = {
@@ -252,19 +259,6 @@ function starGame() {
                     }
 
                     onMessageClick(data_section)
-
-                    clicked_sections.push(data_section);
-                    console.log(clicked_sections);
-                }
-
-
-                canStep = false;
-                if (checkWinner()) {
-                    console.log(localStorage.getItem("username"))
-                    ws.send(JSON.stringify({
-                        type: 'win',
-                        win: localStorage.getItem("username")
-                    }));
                 }
             }
         })
